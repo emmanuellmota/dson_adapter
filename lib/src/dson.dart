@@ -1,7 +1,7 @@
 import '../dson_adapter.dart';
 
 /// Function to transform the value of an object based on its key
-typedef ResolverCallback = Object Function(String key, dynamic value, String type);
+typedef ResolverCallback = Object Function(dynamic value, FunctionParam param, String className, String paramName);
 
 /// Convert JSON to Dart Class withless code generate(build_runner)
 class DSON {
@@ -67,7 +67,7 @@ class DSON {
         .group(1)!
         .split(',')
         .map((e) => e.trim())
-        .map(_FunctionParam.fromString)
+        .map(FunctionParam.fromString)
         .map(
           (param) {
             dynamic value;
@@ -111,7 +111,7 @@ class DSON {
               value = commonResolvers.fold(
                 value,
                 (previousValue, element) {
-                  final result = element(param.name, previousValue, param.type);
+                  final result = element(value, param, className, newParamName ?? param.name);
 
                   return _checkValueType(result, param, className, newParamName ?? param.name);
                 },
@@ -150,7 +150,7 @@ class DSON {
     return Function.apply(mainConstructor, [], namedParams);
   }
 
-  dynamic _checkValueType(dynamic value, _FunctionParam param, String className, String newParamName) {
+  dynamic _checkValueType(dynamic value, FunctionParam param, String className, String newParamName) {
     if (value.runtimeType.toString() == param.type) {
       return value;
     } else {
@@ -177,20 +177,20 @@ class DSON {
   }
 }
 
-class _FunctionParam {
+class FunctionParam {
   final String type;
   final String name;
   final bool isRequired;
   final bool isNullable;
 
-  _FunctionParam({
+  FunctionParam({
     required this.type,
     required this.name,
     required this.isRequired,
     required this.isNullable,
   });
 
-  factory _FunctionParam.fromString(String paramText) {
+  factory FunctionParam.fromString(String paramText) {
     final elements = paramText.split(' ');
 
     final name = elements.last;
@@ -207,7 +207,7 @@ class _FunctionParam {
 
     final isRequired = elements.contains('required');
 
-    return _FunctionParam(
+    return FunctionParam(
       name: name,
       type: type,
       isRequired: isRequired,
