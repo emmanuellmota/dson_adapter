@@ -5,8 +5,13 @@ typedef ResolverCallback = Object Function(String key, dynamic value);
 
 /// Convert JSON to Dart Class withless code generate(build_runner)
 class DSON {
+  /// Common resolvers
+  final List<ResolverCallback> resolvers;
+
   /// Convert JSON to Dart Class withless code generate(build_runner)
-  const DSON();
+  const DSON({
+    this.resolvers = const [],
+  });
 
   ///
   /// For complex objects it is necessary to declare the constructor in
@@ -47,16 +52,16 @@ class DSON {
     Map<Type, Map<String, String>> aliases = const {},
   }) {
     final mainConstructorNamed = mainConstructor.runtimeType.toString();
-    final aliasesWithTypeInString =
-        aliases.map((key, value) => MapEntry(key.toString(), value));
-    final hasOnlyNamedParams =
-        RegExp(r'\(\{(.+)\}\)').firstMatch(mainConstructorNamed);
+    final aliasesWithTypeInString = aliases.map((key, value) => MapEntry(key.toString(), value));
+    final hasOnlyNamedParams = RegExp(r'\(\{(.+)\}\)').firstMatch(mainConstructorNamed);
     final className = mainConstructorNamed.split(' => ').last;
     if (hasOnlyNamedParams == null) {
       throw ParamsNotAllowed('$className must have named params only!');
     }
 
     final regExp = _namedParamsRegExMatch(className, mainConstructorNamed);
+
+    final commonResolvers = [...this.resolvers, ...resolvers];
 
     final params = regExp //
         .group(1)!
@@ -68,8 +73,7 @@ class DSON {
             dynamic value;
 
             var paramName = param.name;
-            final newParamName =
-                aliasesWithTypeInString[className]?[param.name];
+            final newParamName = aliasesWithTypeInString[className]?[param.name];
 
             if (newParamName != null) {
               paramName = newParamName;
@@ -85,7 +89,7 @@ class DSON {
                   this,
                   workflow,
                   inner,
-                  resolvers,
+                  commonResolvers,
                   aliases,
                 );
               } else if (innerParam is Function) {
@@ -101,7 +105,7 @@ class DSON {
               value = workflow;
             }
 
-            value = resolvers.fold(
+            value = commonResolvers.fold(
               value,
               (previousValue, element) => element(param.name, previousValue),
             );
