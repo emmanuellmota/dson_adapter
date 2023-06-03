@@ -1,7 +1,7 @@
 import '../dson_adapter.dart';
 
 /// Function to transform the value of an object based on its key
-typedef ResolverCallback = Object Function(String key, dynamic value);
+typedef ResolverCallback = Object Function(String key, dynamic value, String type);
 
 /// Convert JSON to Dart Class withless code generate(build_runner)
 class DSON {
@@ -107,7 +107,7 @@ class DSON {
 
             value = commonResolvers.fold(
               value,
-              (previousValue, element) => element(param.name, previousValue),
+              (previousValue, element) => element(param.name, previousValue, param.type),
             );
 
             if (value == null) {

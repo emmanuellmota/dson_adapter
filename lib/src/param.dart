@@ -8,7 +8,7 @@ abstract class IParam<T> {
     DSON dson,
     dynamic map,
     Map<String, dynamic> inner,
-    List<Object Function(String, dynamic)> resolvers,
+    List<Object Function(String, dynamic, String)> resolvers,
     Map<Type, Map<String, String>> aliases,
   );
 }
@@ -27,7 +27,7 @@ class ListParam<T> implements IParam<List<T>> {
     DSON dson,
     covariant List map,
     Map<String, dynamic> inner,
-    List<Object Function(String, dynamic)> resolvers,
+    List<Object Function(String, dynamic, String)> resolvers,
     Map<Type, Map<String, String>> aliases,
   ) {
     final typedList = map
@@ -61,7 +61,7 @@ class SetParam<T> implements IParam<Set<T>> {
     DSON dson,
     covariant List map,
     Map<String, dynamic> inner,
-    List<Object Function(String, dynamic)> resolvers,
+    List<Object Function(String, dynamic, String)> resolvers,
     Map<Type, Map<String, String>> aliases,
   ) {
     final typedList = map
