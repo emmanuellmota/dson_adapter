@@ -108,7 +108,18 @@ class DSON {
             if (value != null && commonResolvers.isEmpty) {
               value = _checkValueType(value, param, className, newParamName ?? param.name);
             } else {
-              value = commonResolvers.fold(
+              try {
+                value = this.resolvers.fold(
+                  value,
+                  (previousValue, element) {
+                    final result = element(value, param, className, newParamName ?? param.name);
+
+                    return _checkValueType(result, param, className, newParamName ?? param.name);
+                  },
+                );
+              } catch (e) {}
+
+              value = resolvers.fold(
                 value,
                 (previousValue, element) {
                   final result = element(value, param, className, newParamName ?? param.name);
