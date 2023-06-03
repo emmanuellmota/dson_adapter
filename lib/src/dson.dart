@@ -105,10 +105,18 @@ class DSON {
               value = workflow;
             }
 
-            value = commonResolvers.fold(
-              value,
-              (previousValue, element) => element(param.name, previousValue, param.type),
-            );
+            if (value != null && commonResolvers.isEmpty) {
+              value = _checkValueType(value, param, className, newParamName ?? param.name);
+            } else {
+              value = commonResolvers.fold(
+                value,
+                (previousValue, element) {
+                  final result = element(param.name, previousValue, param.type);
+
+                  return _checkValueType(result, param, className, newParamName ?? param.name);
+                },
+              );
+            }
 
             if (value == null) {
               if (param.isRequired) {
@@ -140,6 +148,19 @@ class DSON {
     final namedParams = <Symbol, dynamic>{}..addEntries(params);
 
     return Function.apply(mainConstructor, [], namedParams);
+  }
+
+  dynamic _checkValueType(dynamic value, _FunctionParam param, String className, String newParamName) {
+    if (value.runtimeType.toString() == param.type) {
+      return value;
+    } else {
+      throw DSONException(
+        "Type '${value.runtimeType}' is not a subtype of type '${param.type}' of"
+        " '$className({${param.isRequired ? 'required ' : ''}"
+        "${param.name}})'${newParamName != param.name ? " with alias '"
+            "$newParamName'." : '.'}",
+      );
+    }
   }
 
   RegExpMatch _namedParamsRegExMatch(
