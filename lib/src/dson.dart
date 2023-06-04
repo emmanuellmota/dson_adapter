@@ -56,7 +56,7 @@ class DSON {
     final hasOnlyNamedParams = RegExp(r'\(\{(.+)\}\)').firstMatch(mainConstructorNamed);
     final className = mainConstructorNamed.split(' => ').last;
     if (hasOnlyNamedParams == null) {
-      throw ParamsNotAllowed('$className must have named params only!');
+      throw ParamsNotAllowed('$className must have named params only!', className: className);
     }
 
     final regExp = _namedParamsRegExMatch(className, mainConstructorNamed);
@@ -141,6 +141,7 @@ class DSON {
                   throw DSONException(
                     'Param $className.${param.name} '
                     'is required and non-nullable.',
+                    className: className,
                   );
                 }
               } else {
@@ -170,6 +171,12 @@ class DSON {
         " '$className({${param.isRequired ? 'required ' : ''}"
         "${param.name}})'${newParamName != param.name ? " with alias '"
             "$newParamName'." : '.'}",
+        receivedType: value.runtimeType.toString(),
+        expectedType: param.type,
+        className: className,
+        paramName: newParamName,
+        alias: newParamName != param.name ? newParamName : null,
+        value: value,
       );
     }
   }
@@ -181,7 +188,7 @@ class DSON {
     final result = RegExp(r'\(\{(.+)\}\)').firstMatch(mainConstructorNamed);
 
     if (result == null) {
-      throw ParamsNotAllowed('$className must have named params only!');
+      throw ParamsNotAllowed('$className must have named params only!', className: className);
     }
 
     return result;
