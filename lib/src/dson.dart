@@ -1,7 +1,7 @@
 import '../dson_adapter.dart';
 
 /// Function to transform the value of an object based on its key
-typedef ResolverCallback = Object Function(dynamic value, FunctionParam param, String className, String paramName);
+typedef ResolverCallback = Object? Function(dynamic value, FunctionParam param, String className, String paramName);
 
 /// Convert JSON to Dart Class withless code generate(build_runner)
 class DSON {
