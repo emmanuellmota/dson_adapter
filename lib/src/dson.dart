@@ -129,19 +129,21 @@ class DSON {
                   },
                 );
               } catch (e) {
-                throw DSONException(
-                  "Type '${value.runtimeType}' is not a subtype of type '${param.type}' of"
-                  " '$className({${param.isRequired ? 'required ' : ''}"
-                  "${param.name}})'${newParamName != param.name ? " with alias '"
-                      "$newParamName'." : '.'}",
-                  stackTrace: StackTrace.fromString(e.toString()),
-                  receivedType: value.runtimeType.toString(),
-                  expectedType: param.type,
-                  className: className,
-                  paramName: newParamName,
-                  alias: newParamName != param.name ? newParamName : null,
-                  value: value,
-                );
+                if (value != null) {
+                  throw DSONException(
+                    "Type '${value.runtimeType}' is not a subtype of type '${param.type}' of"
+                    " '$className({${param.isRequired ? 'required ' : ''}"
+                    "${param.name}})'${newParamName != param.name ? " with alias '"
+                        "$newParamName'." : '.'}",
+                    stackTrace: StackTrace.fromString(e.toString()),
+                    receivedType: value.runtimeType.toString(),
+                    expectedType: param.type,
+                    className: className,
+                    paramName: newParamName,
+                    alias: newParamName != param.name ? newParamName : null,
+                    value: value,
+                  );
+                }
               }
             }
 
