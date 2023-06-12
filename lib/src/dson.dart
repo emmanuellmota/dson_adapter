@@ -105,6 +105,10 @@ class DSON {
               value = workflow;
             }
 
+            if (value.runtimeType != param.type && value != null && param.isNullable && (value is Map && value.isEmpty)) {
+              value = null;
+            }
+
             if (value != null && commonResolvers.isEmpty) {
               value = _checkValueType(value, param, className, newParamName ?? param.name);
             } else {
