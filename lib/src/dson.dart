@@ -63,9 +63,9 @@ class DSON {
 
     final commonResolvers = [...this.resolvers, ...resolvers];
 
-    final params = regExp //
+    final params = regExp
         .group(1)!
-        .split(',')
+        .split(RegExp(', (?![^<]*>)'))
         .map((e) => e.trim())
         .map(FunctionParam.fromString)
         .map(
@@ -109,47 +109,23 @@ class DSON {
               value = null;
             }
 
-            if (value != null && commonResolvers.isEmpty) {
-              value = _checkValueType(value, param, className, newParamName ?? param.name);
-            } else {
-              try {
-                value = this.resolvers.fold(
-                  value,
-                  (previousValue, element) {
-                    final result = element(value, param, className, newParamName ?? param.name);
+            try {
+              value = this.resolvers.fold(
+                value,
+                (previousValue, element) {
+                  return element(value, param, className, newParamName ?? param.name);
+                },
+              );
+            } catch (e) {}
 
-                    return _checkValueType(result, param, className, newParamName ?? param.name);
-                  },
-                );
-              } catch (e) {}
-
-              try {
-                value = resolvers.fold(
-                  value,
-                  (previousValue, element) {
-                    final result = element(value, param, className, newParamName ?? param.name);
-
-                    return _checkValueType(result, param, className, newParamName ?? param.name);
-                  },
-                );
-              } catch (e) {
-                if (value != null) {
-                  throw DSONException(
-                    "Type '${value.runtimeType}' is not a subtype of type '${param.type}' of"
-                    " '$className({${param.isRequired ? 'required ' : ''}"
-                    "${param.name}})'${newParamName != param.name ? " with alias '"
-                        "$newParamName'." : '.'}",
-                    stackTrace: StackTrace.fromString(e.toString()),
-                    receivedType: value.runtimeType.toString(),
-                    expectedType: param.type,
-                    className: className,
-                    paramName: newParamName,
-                    alias: newParamName != param.name ? newParamName : null,
-                    value: value,
-                  );
-                }
-              }
-            }
+            try {
+              value = resolvers.fold(
+                value,
+                (previousValue, element) {
+                  return element(value, param, className, newParamName ?? param.name);
+                },
+              );
+            } catch (e) {}
 
             if (value == null) {
               if (param.isRequired) {
@@ -171,6 +147,8 @@ class DSON {
               }
             }
 
+            _checkValueType(value, param, className, newParamName ?? param.name);
+
             final entry = MapEntry(Symbol(param.name), value);
             return entry;
           },
@@ -184,16 +162,16 @@ class DSON {
     return Function.apply(mainConstructor, [], namedParams);
   }
 
-  dynamic _checkValueType(dynamic value, FunctionParam param, String className, String newParamName) {
-    if (value.runtimeType.toString() == param.type) {
-      return value;
-    } else {
+  void _checkValueType(dynamic value, FunctionParam param, String className, String newParamName) {
+    final runtimeType = value.runtimeType.toString().replaceAll(RegExp('^_'), '');
+
+    if (runtimeType != param.type && !(runtimeType.contains('<') && _areTypesCompatible(runtimeType, param.type))) {
       throw DSONException(
-        "Type '${value.runtimeType}' is not a subtype of type '${param.type}' of"
+        "Type '$runtimeType' is not a subtype of type '${param.type}' of"
         " '$className({${param.isRequired ? 'required ' : ''}"
         "${param.name}})'${newParamName != param.name ? " with alias '"
             "$newParamName'." : '.'}",
-        receivedType: value.runtimeType.toString(),
+        receivedType: runtimeType,
         expectedType: param.type,
         className: className,
         paramName: newParamName,
@@ -201,6 +179,27 @@ class DSON {
         value: value,
       );
     }
+  }
+
+  bool _areTypesCompatible(String type1, String type2) {
+    if (type1 == type2) {
+      return true;
+    }
+
+    if (type1 == 'dynamic' || type2 == 'dynamic' || type1 == 'object' || type2 == 'object') {
+      return true;
+    }
+
+    final typePattern = RegExp(r'^\s*(\w+)\s*<[^>]+>\s*$');
+
+    final match1 = typePattern.firstMatch(type1);
+    final match2 = typePattern.firstMatch(type2);
+
+    if (match2 != null) {
+      return match1?.group(1) == match2.group(1);
+    }
+
+    return false;
   }
 
   RegExpMatch _namedParamsRegExMatch(
@@ -231,7 +230,7 @@ class FunctionParam {
   });
 
   factory FunctionParam.fromString(String paramText) {
-    final elements = paramText.split(' ');
+    final elements = RegExp(r'((?:\w+\s*<[^>]+>\s*)|\w+)\s*').allMatches(paramText).map((match) => match.group(1)!.trim()).toList();
 
     final name = elements.last;
     elements.removeLast();
