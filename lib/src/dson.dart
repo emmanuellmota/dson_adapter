@@ -105,7 +105,10 @@ class DSON {
               value = workflow;
             }
 
-            if (value.runtimeType != param.type && value != null && param.isNullable && (value is Map && value.isEmpty)) {
+            if (value.runtimeType != param.type &&
+                value != null &&
+                param.isNullable &&
+                (value is Map && value.isEmpty)) {
               value = null;
             }
 
@@ -186,6 +189,11 @@ class DSON {
       return true;
     }
 
+    if ((type1 == 'int' || type1 == 'num' || type1 == 'double') &&
+        (type2 == 'int' || type2 == 'num' || type2 == 'double')) {
+      return true;
+    }
+
     if (type1 == 'dynamic' || type2 == 'dynamic' || type1 == 'object' || type2 == 'object') {
       return true;
     }
@@ -230,7 +238,8 @@ class FunctionParam {
   });
 
   factory FunctionParam.fromString(String paramText) {
-    final elements = RegExp(r'((?:\w+\s*<[^>]+>\s*)|\w+)\s*').allMatches(paramText).map((match) => match.group(1)!.trim()).toList();
+    final elements =
+        RegExp(r'((?:\w+\s*<[^>]+>\s*)|\w+)\s*').allMatches(paramText).map((match) => match.group(1)!.trim()).toList();
 
     final name = elements.last;
     elements.removeLast();
