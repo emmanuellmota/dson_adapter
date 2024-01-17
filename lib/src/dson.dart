@@ -105,7 +105,10 @@ class DSON {
               value = workflow;
             }
 
-            if (value.runtimeType != param.type && value != null && param.isNullable && (value is Map && value.isEmpty)) {
+            if (value.runtimeType != param.type &&
+                value != null &&
+                param.isNullable &&
+                (value is Map && value.isEmpty)) {
               value = null;
             }
 
@@ -165,6 +168,8 @@ class DSON {
   void _checkValueType(dynamic value, FunctionParam param, String className, String newParamName) {
     final runtimeType = value.runtimeType.toString().replaceAll(RegExp('^_'), '');
 
+    if (_areNumbers(runtimeType, param.type)) return;
+
     if (runtimeType != param.type && !(runtimeType.contains('<') && _areTypesCompatible(runtimeType, param.type))) {
       throw DSONException(
         "Type '$runtimeType' is not a subtype of type '${param.type}' of"
@@ -179,6 +184,15 @@ class DSON {
         value: value,
       );
     }
+  }
+
+  bool _areNumbers(String type1, String type2) {
+    if ((type1 == 'int' || type1 == 'num' || type1 == 'double') &&
+        (type2 == 'int' || type2 == 'num' || type2 == 'double')) {
+      return true;
+    }
+
+    return false;
   }
 
   bool _areTypesCompatible(String type1, String type2) {
@@ -230,7 +244,8 @@ class FunctionParam {
   });
 
   factory FunctionParam.fromString(String paramText) {
-    final elements = RegExp(r'((?:\w+\s*<[^>]+>\s*)|\w+)\s*').allMatches(paramText).map((match) => match.group(1)!.trim()).toList();
+    final elements =
+        RegExp(r'((?:\w+\s*<[^>]+>\s*)|\w+)\s*').allMatches(paramText).map((match) => match.group(1)!.trim()).toList();
 
     final name = elements.last;
     elements.removeLast();
