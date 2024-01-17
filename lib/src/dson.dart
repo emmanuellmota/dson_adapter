@@ -168,6 +168,8 @@ class DSON {
   void _checkValueType(dynamic value, FunctionParam param, String className, String newParamName) {
     final runtimeType = value.runtimeType.toString().replaceAll(RegExp('^_'), '');
 
+    if (_areNumbers(runtimeType, param.type)) return;
+
     if (runtimeType != param.type && !(runtimeType.contains('<') && _areTypesCompatible(runtimeType, param.type))) {
       throw DSONException(
         "Type '$runtimeType' is not a subtype of type '${param.type}' of"
@@ -184,13 +186,17 @@ class DSON {
     }
   }
 
-  bool _areTypesCompatible(String type1, String type2) {
-    if (type1 == type2) {
+  bool _areNumbers(String type1, String type2) {
+    if ((type1 == 'int' || type1 == 'num' || type1 == 'double') &&
+        (type2 == 'int' || type2 == 'num' || type2 == 'double')) {
       return true;
     }
 
-    if ((type1 == 'int' || type1 == 'num' || type1 == 'double') &&
-        (type2 == 'int' || type2 == 'num' || type2 == 'double')) {
+    return false;
+  }
+
+  bool _areTypesCompatible(String type1, String type2) {
+    if (type1 == type2) {
       return true;
     }
 
