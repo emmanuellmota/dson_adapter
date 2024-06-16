@@ -1,17 +1,21 @@
+// ignore_for_file: avoid_catching_errors
+
+import 'dart:developer';
+
 import '../dson_adapter.dart';
 
 /// Function to transform the value of an object based on its key
-typedef ResolverCallback = Object? Function(dynamic value, FunctionParam param, String className, String paramName);
+typedef ResolverCallback = Object? Function(
+    String key, dynamic value, String type);
 
 /// Convert JSON to Dart Class withless code generate(build_runner)
 class DSON {
   /// Common resolvers
-  final List<ResolverCallback> resolvers;
+  final List<ResolverCallback> commonResolvers;
 
   /// Convert JSON to Dart Class withless code generate(build_runner)
-  const DSON({
-    this.resolvers = const [],
-  });
+  const DSON({List<ResolverCallback>? resolvers})
+      : commonResolvers = resolvers ?? const [];
 
   ///
   /// For complex objects it is necessary to declare the constructor in
@@ -52,223 +56,140 @@ class DSON {
     Map<Type, Map<String, String>> aliases = const {},
   }) {
     final mainConstructorNamed = mainConstructor.runtimeType.toString();
-    final aliasesWithTypeInString = aliases.map((key, value) => MapEntry(key.toString(), value));
-    final hasOnlyNamedParams = RegExp(r'\(\{(.+)\}\)').firstMatch(mainConstructorNamed);
-    final className = mainConstructorNamed.split(' => ').last;
+    final aliasesWithTypeInString =
+        aliases.map((key, value) => MapEntry(key.toString(), value));
+    final hasOnlyNamedParams =
+        RegExp(r'\(\{(.+)\}\)').firstMatch(mainConstructorNamed);
+    final parentClass = mainConstructorNamed.split(' => ').last;
     if (hasOnlyNamedParams == null) {
-      throw ParamsNotAllowed('$className must have named params only!', className: className);
+      throw ParamsNotAllowed('$parentClass must have named params only!');
     }
 
-    final regExp = _namedParamsRegExMatch(className, mainConstructorNamed);
+    final regExp = _namedParamsRegExMatch(parentClass, mainConstructorNamed);
+    final functionParams =
+        _parseFunctionParams(regExp, aliasesWithTypeInString[parentClass]);
 
-    final commonResolvers = [...this.resolvers, ...resolvers];
+    final allResolvers = [...commonResolvers, ...resolvers];
 
-    final params = regExp
-        .group(1)!
-        .split(RegExp(', (?![^<]*>)'))
-        .map((e) => e.trim())
-        .map(FunctionParam.fromString)
-        .map(
-          (param) {
-            dynamic value;
+    try {
+      final mapEntryParams = functionParams
+          .map(
+            (functionParam) {
+              dynamic value;
 
-            var paramName = param.name;
-            final newParamName = aliasesWithTypeInString[className]?[param.name];
+              final hasSubscriptOperator =
+                  map is Map || map is List || map is Set;
 
-            if (newParamName != null) {
-              paramName = newParamName;
-            }
-
-            final workflow = map[paramName];
-
-            if (workflow is Map || workflow is List || workflow is Set) {
-              final innerParam = inner[param.name];
-
-              if (innerParam is IParam) {
-                value = innerParam.call(
-                  this,
-                  workflow,
-                  inner,
-                  commonResolvers,
-                  aliases,
+              if (!hasSubscriptOperator) {
+                throw ParamInvalidType.notIterable(
+                  functionParam: functionParam,
+                  receivedType: map.runtimeType.toString(),
+                  parentClass: parentClass,
+                  stackTrace: StackTrace.current,
                 );
-              } else if (innerParam is Function) {
-                value = fromJson(
-                  workflow,
-                  innerParam,
-                  aliases: aliases,
-                );
+              }
+
+              final workflow = map[functionParam.aliasOrName];
+
+              if (workflow is Map || workflow is List || workflow is Set) {
+                final innerParam = inner[functionParam.name];
+
+                if (innerParam is IParam) {
+                  value = innerParam.call(
+                    this,
+                    workflow,
+                    inner,
+                    allResolvers,
+                    aliases,
+                  );
+
+                  if (value is List) {
+                    value = value.toList();
+                  }
+                } else if (innerParam is Function) {
+                  value = fromJson(
+                    workflow,
+                    innerParam,
+                    resolvers: allResolvers,
+                    aliases: aliases,
+                  );
+                } else {
+                  value = workflow;
+                }
               } else {
                 value = workflow;
               }
-            } else {
-              value = workflow;
-            }
 
-            if (value.runtimeType != param.type &&
-                value != null &&
-                param.isNullable &&
-                (value is Map && value.isEmpty)) {
-              value = null;
-            }
-
-            try {
-              value = this.resolvers.fold(
+              value = allResolvers.fold(
                 value,
                 (previousValue, element) {
-                  return element(value, param, className, newParamName ?? param.name);
-                },
-              );
-            } catch (e) {}
-
-            try {
-              value = resolvers.fold(
-                value,
-                (previousValue, element) {
-                  return element(value, param, className, newParamName ?? param.name);
-                },
-              );
-            } catch (e) {}
-
-            if (value == null) {
-              if (param.isRequired) {
-                if (param.isNullable) {
-                  final entry = MapEntry(
-                    Symbol(param.name),
-                    null,
+                  return element(
+                    functionParam.name,
+                    previousValue,
+                    functionParam.type,
                   );
-                  return entry;
-                } else {
-                  throw DSONException(
-                    'Param $className.${param.name} '
-                    'is required and non-nullable.',
-                    className: className,
+                },
+              );
+
+              if (value == null) {
+                if (!functionParam.isRequired) return null;
+                if (!functionParam.isNullable) {
+                  throw ParamNullNotAllowed(
+                    functionParam: functionParam,
+                    parentClass: parentClass,
+                    stackTrace: StackTrace.current,
                   );
                 }
-              } else {
-                return null;
+
+                final entry = MapEntry(Symbol(functionParam.name), null);
+                return entry;
               }
-            }
 
-            _checkValueType(value, param, className, newParamName ?? param.name);
+              final entry = MapEntry(Symbol(functionParam.name), value);
+              return entry;
+            },
+          )
+          .where((entry) => entry != null)
+          .cast<MapEntry<Symbol, dynamic>>()
+          .toList();
 
-            final entry = MapEntry(Symbol(param.name), value);
-            return entry;
-          },
-        )
-        .where((entry) => entry != null)
-        .cast<MapEntry<Symbol, dynamic>>()
-        .toList();
+      final namedParams = <Symbol, dynamic>{}..addEntries(mapEntryParams);
 
-    final namedParams = <Symbol, dynamic>{}..addEntries(params);
-
-    return Function.apply(mainConstructor, [], namedParams);
-  }
-
-  void _checkValueType(dynamic value, FunctionParam param, String className, String newParamName) {
-    final runtimeType = value.runtimeType.toString().replaceAll(RegExp('^_'), '');
-
-    if (_areNumbers(runtimeType, param.type)) return;
-
-    if (runtimeType != param.type && !(runtimeType.contains('<') && _areTypesCompatible(runtimeType, param.type))) {
-      throw DSONException(
-        "Type '$runtimeType' is not a subtype of type '${param.type}' of"
-        " '$className({${param.isRequired ? 'required ' : ''}"
-        "${param.name}})'${newParamName != param.name ? " with alias '"
-            "$newParamName'." : '.'}",
-        receivedType: runtimeType,
-        expectedType: param.type,
-        className: className,
-        paramName: newParamName,
-        alias: newParamName != param.name ? newParamName : null,
-        value: value,
+      return Function.apply(mainConstructor, [], namedParams);
+    } on TypeError catch (error, stackTrace) {
+      throw ParamInvalidType.typeError(
+        error: error,
+        stackTrace: stackTrace,
+        functionParams: functionParams,
+        parentClass: parentClass,
       );
     }
   }
 
-  bool _areNumbers(String type1, String type2) {
-    if ((type1 == 'int' || type1 == 'num' || type1 == 'double') &&
-        (type2 == 'int' || type2 == 'num' || type2 == 'double')) {
-      return true;
-    }
-
-    return false;
-  }
-
-  bool _areTypesCompatible(String type1, String type2) {
-    if (type1 == type2) {
-      return true;
-    }
-
-    if (type1 == 'dynamic' || type2 == 'dynamic' || type1 == 'object' || type2 == 'object') {
-      return true;
-    }
-
-    final typePattern = RegExp(r'^\s*(\w+)\s*<[^>]+>\s*$');
-
-    final match1 = typePattern.firstMatch(type1);
-    final match2 = typePattern.firstMatch(type2);
-
-    if (match2 != null) {
-      return match1?.group(1) == match2.group(1);
-    }
-
-    return false;
-  }
-
   RegExpMatch _namedParamsRegExMatch(
-    String className,
+    String parentClass,
     String mainConstructorNamed,
   ) {
     final result = RegExp(r'\(\{(.+)\}\)').firstMatch(mainConstructorNamed);
 
     if (result == null) {
-      throw ParamsNotAllowed('$className must have named params only!', className: className);
+      throw ParamsNotAllowed('$parentClass must have named params only!');
     }
 
     return result;
   }
-}
 
-class FunctionParam {
-  final String type;
-  final String name;
-  final bool isRequired;
-  final bool isNullable;
-
-  FunctionParam({
-    required this.type,
-    required this.name,
-    required this.isRequired,
-    required this.isNullable,
-  });
-
-  factory FunctionParam.fromString(String paramText) {
-    final elements =
-        RegExp(r'((?:\w+\s*<[^>]+>\s*)|\w+)\s*').allMatches(paramText).map((match) => match.group(1)!.trim()).toList();
-
-    final name = elements.last;
-    elements.removeLast();
-
-    var type = elements.last;
-
-    final lastMarkQuestionIndex = type.lastIndexOf('?');
-    final isNullable = lastMarkQuestionIndex == type.length - 1;
-
-    if (isNullable) {
-      type = type.replaceFirst('?', '', lastMarkQuestionIndex);
-    }
-
-    final isRequired = elements.contains('required');
-
-    return FunctionParam(
-      name: name,
-      type: type,
-      isRequired: isRequired,
-      isNullable: isNullable,
-    );
+  Iterable<FunctionParam> _parseFunctionParams(
+    RegExpMatch regExp,
+    Map<String, String>? aliases,
+  ) {
+    return regExp
+        .group(1)!
+        .split(RegExp(',(?![^<]*>)'))
+        .map((e) => e.trim())
+        .map(
+          (element) => FunctionParam.fromString(element)
+              .copyWith(alias: aliases?[element.split(' ').last]),
+        );
   }
-
-  @override
-  String toString() => 'Param(type: $type, name: $name)';
 }

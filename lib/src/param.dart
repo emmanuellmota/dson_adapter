@@ -8,7 +8,7 @@ abstract class IParam<T> {
     DSON dson,
     dynamic map,
     Map<String, dynamic> inner,
-    List<Object? Function(dynamic, FunctionParam, String, String)> resolvers,
+    List<Object? Function(String key, dynamic value, String type)> resolvers,
     Map<Type, Map<String, String>> aliases,
   );
 }
@@ -27,7 +27,7 @@ class ListParam<T> implements IParam<List<T>> {
     DSON dson,
     covariant List map,
     Map<String, dynamic> inner,
-    List<Object? Function(dynamic, FunctionParam, String, String)> resolvers,
+    List<Object? Function(String key, dynamic value, String type)> resolvers,
     Map<Type, Map<String, String>> aliases,
   ) {
     final typedList = map
@@ -61,7 +61,7 @@ class SetParam<T> implements IParam<Set<T>> {
     DSON dson,
     covariant List map,
     Map<String, dynamic> inner,
-    List<Object? Function(dynamic, FunctionParam, String, String)> resolvers,
+    List<Object? Function(String key, dynamic value, String type)> resolvers,
     Map<Type, Map<String, String>> aliases,
   ) {
     final typedList = map
@@ -78,5 +78,81 @@ class SetParam<T> implements IParam<Set<T>> {
         .cast<T>();
 
     return typedList;
+  }
+}
+
+/// Used to represent a parameter
+class FunctionParam {
+  /// Type of parameter
+  final String type;
+
+  /// Name of parameter
+  final String name;
+
+  /// If parameter is required
+  final bool isRequired;
+
+  /// If parameter is nullable
+  final bool isNullable;
+
+  /// Alias of parameter
+  final String? alias;
+
+  /// Used to represent a parameter
+  FunctionParam({
+    required this.type,
+    required this.name,
+    required this.isRequired,
+    required this.isNullable,
+    this.alias,
+  });
+
+  /// Return [String] using alias or name
+  String get aliasOrName => alias ?? name;
+
+  /// Create a [FunctionParam] from [String]
+  factory FunctionParam.fromString(String paramText) {
+    final elements = paramText.split(' ');
+
+    final name = elements.last;
+    elements.removeLast();
+
+    var type = elements.last;
+
+    final lastMarkQuestionIndex = type.lastIndexOf('?');
+    final isNullable = lastMarkQuestionIndex == type.length - 1;
+
+    if (isNullable) {
+      type = type.replaceFirst('?', '', lastMarkQuestionIndex);
+    }
+
+    final isRequired = elements.contains('required');
+
+    return FunctionParam(
+      name: name,
+      type: type,
+      isRequired: isRequired,
+      isNullable: isNullable,
+    );
+  }
+
+  @override
+  String toString() => '$type $name';
+
+  /// Copy this instance with new values
+  FunctionParam copyWith({
+    String? type,
+    String? name,
+    bool? isRequired,
+    bool? isNullable,
+    String? alias,
+  }) {
+    return FunctionParam(
+      type: type ?? this.type,
+      name: name ?? this.name,
+      isRequired: isRequired ?? this.isRequired,
+      isNullable: isNullable ?? this.isNullable,
+      alias: alias ?? this.alias,
+    );
   }
 }
