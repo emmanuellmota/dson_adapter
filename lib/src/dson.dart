@@ -1,14 +1,21 @@
 // ignore_for_file: avoid_catching_errors
 
+import 'dart:developer';
+
 import '../dson_adapter.dart';
 
 /// Function to transform the value of an object based on its key
-typedef ResolverCallback = Object Function(String key, dynamic value);
+typedef ResolverCallback = Object? Function(
+    String key, dynamic value, String type);
 
 /// Convert JSON to Dart Class withless code generate(build_runner)
 class DSON {
+  /// Common resolvers
+  final List<ResolverCallback> commonResolvers;
+
   /// Convert JSON to Dart Class withless code generate(build_runner)
-  const DSON();
+  const DSON({List<ResolverCallback>? resolvers})
+      : commonResolvers = resolvers ?? const [];
 
   ///
   /// For complex objects it is necessary to declare the constructor in
@@ -62,6 +69,8 @@ class DSON {
     final functionParams =
         _parseFunctionParams(regExp, aliasesWithTypeInString[parentClass]);
 
+    final allResolvers = [...commonResolvers, ...resolvers];
+
     try {
       final mapEntryParams = functionParams
           .map(
@@ -90,14 +99,18 @@ class DSON {
                     this,
                     workflow,
                     inner,
-                    resolvers,
+                    allResolvers,
                     aliases,
                   );
+
+                  if (value is List) {
+                    value = value.toList();
+                  }
                 } else if (innerParam is Function) {
                   value = fromJson(
                     workflow,
                     innerParam,
-                    resolvers: resolvers,
+                    resolvers: allResolvers,
                     aliases: aliases,
                   );
                 } else {
@@ -107,10 +120,15 @@ class DSON {
                 value = workflow;
               }
 
-              value = resolvers.fold(
+              value = allResolvers.fold(
                 value,
-                (previousValue, element) =>
-                    element(functionParam.name, previousValue),
+                (previousValue, element) {
+                  return element(
+                    functionParam.name,
+                    previousValue,
+                    functionParam.type,
+                  );
+                },
               );
 
               if (value == null) {
@@ -165,7 +183,11 @@ class DSON {
     RegExpMatch regExp,
     Map<String, String>? aliases,
   ) {
-    return regExp.group(1)!.split(',').map((e) => e.trim()).map(
+    return regExp
+        .group(1)!
+        .split(RegExp(',(?![^<]*>)'))
+        .map((e) => e.trim())
+        .map(
           (element) => FunctionParam.fromString(element)
               .copyWith(alias: aliases?[element.split(' ').last]),
         );
