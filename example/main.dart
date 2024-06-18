@@ -1,5 +1,7 @@
 // ignore_for_file: avoid_print
 
+import 'dart:developer';
+
 import 'package:dson_adapter/dson_adapter.dart';
 import 'package:dson_adapter/src/extensions/iterable_extension.dart';
 
@@ -11,7 +13,7 @@ void main() {
       'id': 1,
       'name': 'Joshua Clak',
       'age': 3,
-      'profile': 'PARENTS',
+      'profile': 'NON_PARENTS',
     },
     'parents': [
       {
@@ -48,6 +50,12 @@ void main() {
     }
   ];
 
+  final aliases = {
+    Home: {
+      'createDate': 'create_date',
+    },
+  };
+
   final home = DSON(resolvers: commonResolvers).fromJson<Home>(
     // json Map or List
     jsonMap,
@@ -59,9 +67,7 @@ void main() {
       'parents': ListParam<Person>(Person.new),
       'account': Account.new,
     },
-    aliases: {
-      Home: {'createDate': 'create_date'},
-    },
+    aliases: aliases,
     resolvers: [
       (key, value, type) {
         if (key == 'profile') {
@@ -74,19 +80,39 @@ void main() {
     ],
   );
 
+  final map = home.toMap(propNameConverter: toKebabCase);
+  final json = home.toJson(aliases: aliases);
+  final str = home.toString();
+
+  final copy = home.copyWith((_, __) {});
+  final isEquals = home.equals(copy);
+
+  final updated3 = home.copyWith((set, e) {
+    set(e.id, 3);
+    set(e.name, 'MyCustomHome3');
+    set(e.owner, e.owner.copyWith((set, o) {
+      set(o.name, 'Myself');
+    }));
+  });
+
+  final isEqualsUpdate = home.equals(updated3);
+
+  log(json);
+
   print(home);
 }
 
-enum Profile {
+enum Profile implements SerializableEnum {
   parents('PARENTS'),
   nonParents('NON_PARENTS');
 
+  @override
   final String name;
 
   const Profile(this.name);
 }
 
-class Home {
+class Home extends Serializable {
   final int id;
   final String name;
   final Person owner;
@@ -104,7 +130,7 @@ class Home {
   });
 }
 
-class Person {
+class Person extends Serializable {
   final int id;
   final String? name;
   final int age;
@@ -120,7 +146,7 @@ class Person {
   });
 }
 
-class Account {
+class Account extends Serializable {
   final int id;
 
   Account({
