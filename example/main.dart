@@ -11,14 +11,16 @@ void main() {
     'name': 'MyHome',
     'owner': {
       'id': 1,
-      'name': 'Joshua Clak',
+      'name': 'Joshua',
+      'last_name': 'Clak',
       'age': 3,
       'profile': 'NON_PARENTS',
     },
     'parents': [
       {
         'id': 2,
-        'name': 'Kepper Clak',
+        'name': 'Kepper',
+        'last_name': 'Clak',
         'age': 25,
         'profile': 'PARENTS',
         'account': {
@@ -27,7 +29,8 @@ void main() {
       },
       {
         'id': 3,
-        'name': 'Douglas Bisserra',
+        'name': 'Douglas',
+        'last_name': 'Bisserra',
         'age': 23,
         'account': {
           'id': 1,
@@ -53,6 +56,9 @@ void main() {
   final aliases = {
     Home: {
       'createDate': 'create_date',
+    },
+    Person: {
+      'surname': 'last_name',
     },
   };
 
@@ -133,6 +139,7 @@ class Home extends Serializable {
 class Person extends Serializable {
   final int id;
   final String? name;
+  final String? surname;
   final int age;
   final Profile profile;
   final Account? account;
@@ -140,6 +147,7 @@ class Person extends Serializable {
   Person({
     required this.id,
     this.name,
+    this.surname,
     this.age = 20,
     this.profile = Profile.nonParents,
     this.account,

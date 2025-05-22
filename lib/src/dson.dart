@@ -145,6 +145,11 @@ class DSON {
                 },
               );
 
+              final snakeCaseKey = toSnakeCase(workflowKey);
+              if (value == null && map.containsKey(snakeCaseKey)) {
+                value = map[snakeCaseKey];
+              }
+
               if (value == null) {
                 if (!functionParam.isRequired) return null;
                 if (!functionParam.isNullable) {
@@ -179,8 +184,9 @@ class DSON {
             final n = Function.apply(mainConstructor, [], params);
 
             n._props.addAll(props);
-            n.._entries = params
-            .._builder = result._builder;
+            n
+              .._entries = params
+              .._builder = result._builder;
 
             return n;
           };
@@ -242,14 +248,15 @@ abstract class Serializable {
     Map<Type, Map<String, String>> aliases = const {},
     String Function(String)? propNameConverter,
   }) =>
-      json.encode(toMap(aliases: aliases, propNameConverter: propNameConverter));
+      json.encode(
+          toMap(aliases: aliases, propNameConverter: propNameConverter));
 
   Map<String, dynamic> _recursiveMap(
-      Map<String, dynamic> props,
-      Map<Type, Map<String, String>> aliases,
-      String Function(String)? propNameConverter, [
-        Type? entryType,
-      ]) {
+    Map<String, dynamic> props,
+    Map<Type, Map<String, String>> aliases,
+    String Function(String)? propNameConverter, [
+    Type? entryType,
+  ]) {
     final map = <String, dynamic>{};
 
     for (final entry in props.entries) {
@@ -265,14 +272,17 @@ abstract class Serializable {
       }
 
       final alias = aliases[entryType];
-      key = alias?.containsKey(originalKey) == true ? alias![originalKey]! : key;
+      key =
+          alias?.containsKey(originalKey) == true ? alias![originalKey]! : key;
 
       if (value is Serializable) {
-        map[key] = _recursiveMap(value.toMap(), aliases, propNameConverter, value.runtimeType);
+        map[key] = _recursiveMap(
+            value.toMap(), aliases, propNameConverter, value.runtimeType);
       } else if (value is List) {
         map[key] = value.map((e) {
           if (e is Serializable) {
-            return _recursiveMap(e.toMap(), aliases, propNameConverter, e.runtimeType);
+            return _recursiveMap(
+                e.toMap(), aliases, propNameConverter, e.runtimeType);
           }
           return e;
         }).toList();
