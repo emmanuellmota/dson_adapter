@@ -665,6 +665,23 @@ void main() {
       ),
     );
   });
+
+  test('fromJson convert map in Token with auto case', () {
+    final jsonMap = {
+      'user': 'Joshua Clak',
+      'access_token': '1234567890',
+      'expires_in': 3600,
+      'refresh_token': '0987654321',
+      'refresh_token_expires_in': 7200,
+    };
+
+    final token = dson.fromJson<Token>(jsonMap, Token.new);
+    expect(token.user, 'Joshua Clak');
+    expect(token.accessToken, '1234567890');
+    expect(token.expiresIn, 3600);
+    expect(token.refreshToken, '0987654321');
+    expect(token.refreshTokenExpiresIn, 7200);
+  });
 }
 
 class Person {
@@ -708,4 +725,20 @@ class PrimitiveList {
 class ErrorsSnapshot {
   final List<String?> errors;
   ErrorsSnapshot({required this.errors});
+}
+
+class Token {
+  final String user;
+  final String accessToken;
+  final int expiresIn;
+  final String refreshToken;
+  final int refreshTokenExpiresIn;
+
+  Token({
+    required this.user,
+    required this.accessToken,
+    required this.expiresIn,
+    required this.refreshToken,
+    required this.refreshTokenExpiresIn,
+  });
 }

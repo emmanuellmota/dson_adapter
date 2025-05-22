@@ -1,5 +1,7 @@
 // ignore_for_file: avoid_print
 
+import 'dart:developer';
+
 import 'package:dson_adapter/dson_adapter.dart';
 import 'package:dson_adapter/src/extensions/iterable_extension.dart';
 
@@ -9,14 +11,16 @@ void main() {
     'name': 'MyHome',
     'owner': {
       'id': 1,
-      'name': 'Joshua Clak',
+      'name': 'Joshua',
+      'last_name': 'Clak',
       'age': 3,
-      'profile': 'PARENTS',
+      'profile': 'NON_PARENTS',
     },
     'parents': [
       {
         'id': 2,
-        'name': 'Kepper Clak',
+        'name': 'Kepper',
+        'last_name': 'Clak',
         'age': 25,
         'profile': 'PARENTS',
         'account': {
@@ -25,7 +29,8 @@ void main() {
       },
       {
         'id': 3,
-        'name': 'Douglas Bisserra',
+        'name': 'Douglas',
+        'last_name': 'Bisserra',
         'age': 23,
         'account': {
           'id': 1,
@@ -48,6 +53,15 @@ void main() {
     }
   ];
 
+  final aliases = {
+    Home: {
+      'createDate': 'create_date',
+    },
+    Person: {
+      'surname': 'last_name',
+    },
+  };
+
   final home = DSON(resolvers: commonResolvers).fromJson<Home>(
     // json Map or List
     jsonMap,
@@ -59,9 +73,7 @@ void main() {
       'parents': ListParam<Person>(Person.new),
       'account': Account.new,
     },
-    aliases: {
-      Home: {'createDate': 'create_date'},
-    },
+    aliases: aliases,
     resolvers: [
       (key, value, type) {
         if (key == 'profile') {
@@ -74,19 +86,39 @@ void main() {
     ],
   );
 
+  final map = home.toMap(propNameConverter: toKebabCase);
+  final json = home.toJson(aliases: aliases);
+  final str = home.toString();
+
+  final copy = home.copyWith((_, __) {});
+  final isEquals = home.equals(copy);
+
+  final updated3 = home.copyWith((set, e) {
+    set(e.id, 3);
+    set(e.name, 'MyCustomHome3');
+    set(e.owner, e.owner.copyWith((set, o) {
+      set(o.name, 'Myself');
+    }));
+  });
+
+  final isEqualsUpdate = home.equals(updated3);
+
+  log(json);
+
   print(home);
 }
 
-enum Profile {
+enum Profile implements SerializableEnum {
   parents('PARENTS'),
   nonParents('NON_PARENTS');
 
+  @override
   final String name;
 
   const Profile(this.name);
 }
 
-class Home {
+class Home extends Serializable {
   final int id;
   final String name;
   final Person owner;
@@ -104,9 +136,10 @@ class Home {
   });
 }
 
-class Person {
+class Person extends Serializable {
   final int id;
   final String? name;
+  final String? surname;
   final int age;
   final Profile profile;
   final Account? account;
@@ -114,13 +147,14 @@ class Person {
   Person({
     required this.id,
     this.name,
+    this.surname,
     this.age = 20,
     this.profile = Profile.nonParents,
     this.account,
   });
 }
 
-class Account {
+class Account extends Serializable {
   final int id;
 
   Account({
