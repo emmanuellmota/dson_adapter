@@ -307,8 +307,8 @@ abstract class Serializable {
     return map;
   }
 
-  bool equals<T extends Serializable>(T other) {
-    return _deepEquals(_props, other._props);
+  bool equals<T extends Serializable>(T? other) {
+    return _deepEquals(_props, other?._props);
   }
 
   bool _deepEquals(dynamic a, dynamic b) {
