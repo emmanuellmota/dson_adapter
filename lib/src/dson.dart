@@ -144,6 +144,7 @@ class DSON {
                   value = fromJson(
                     workflow,
                     innerParam,
+                    inner: inner,
                     resolvers: allResolvers,
                     aliases: aliases,
                     propNameConverter: propNameConverter,
