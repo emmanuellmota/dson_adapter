@@ -1,6 +1,9 @@
 // ignore_for_file: avoid_catching_errors
 
 import 'dart:convert';
+import 'dart:developer';
+
+import 'package:dson_adapter/src/extensions/iterable_extension.dart';
 
 import '../dson_adapter.dart';
 
@@ -102,7 +105,25 @@ class DSON {
                 workflowKey = aliases[parentClass]![workflowKey]!;
               }
 
-              final workflow = map[workflowKey];
+              late final dynamic workflow;
+
+              if (map is Map) {
+                if (map.containsKey(workflowKey)) {
+                  workflow = map[workflowKey];
+                } else {
+                  final keyCaseVariants = [
+                    toKebabCase(workflowKey),
+                    toSnakeCase(workflowKey),
+                    toCamelCase(workflowKey),
+                  ];
+
+                  workflow = map[keyCaseVariants
+                          .firstWhereOrNull((key) => map.containsKey(key)) ??
+                      workflowKey];
+                }
+              } else {
+                workflow = map[workflowKey];
+              }
 
               if (workflow is Map || workflow is List || workflow is Set) {
                 final innerParam = inner[functionParam.name];
@@ -144,11 +165,6 @@ class DSON {
                   );
                 },
               );
-
-              final snakeCaseKey = toSnakeCase(workflowKey);
-              if (value == null && map.containsKey(snakeCaseKey)) {
-                value = map[snakeCaseKey];
-              }
 
               if (value == null) {
                 if (!functionParam.isRequired) return null;

@@ -38,6 +38,7 @@ void main() {
       },
     ],
     'create_date': '2024-06-16',
+    'updated_date': '2024-06-16',
     'meta': {
       'neghborhood': 'MyHome',
     },
@@ -125,6 +126,7 @@ class Home extends Serializable {
   final List<Person> parents;
   final Map<String, dynamic> meta;
   final DateTime createDate;
+  final DateTime updatedDate;
 
   Home({
     required this.id,
@@ -133,6 +135,7 @@ class Home extends Serializable {
     required this.parents,
     this.meta = const {},
     required this.createDate,
+    required this.updatedDate,
   });
 }
 
